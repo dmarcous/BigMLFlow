@@ -1,0 +1,69 @@
+// Snippet 1
+%dep
+z.reset()
+// Add spark-csv package
+z.load("com.databricks:spark-csv_2.10:1.3.0")
+// Add your jar from the machine where zeppeling is running on
+z.load("/tmp/BigMLFlow.jar")
+
+// Snippet 2
+val scoring_feature_matrix_loc = "s3://.../scoring_feature_matrix/date=YYYY-MM-DD/"
+val scoring_feature_matrix = sqlContext.read.parquet(scoring_feature_matrix_loc)
+scoring_feature_matrix.show()
+scoring_feature_matrix.printSchema()
+val count_users = scoring_feature_matrix.select($"user_id").distinct.count()
+println(count_users)
+
+scoring_feature_matrix.registerTempTable("scores")
+
+// Snippet 3
+%sql
+
+select 
+local_dow as day_of_week,
+local_hour as hour,
+count(*) as num_samples
+from scores 
+group by 
+local_dow,
+local_hour
+
+// Snippet 4
+val predictions_loc = "s3://.../predictions/date=YYYY-MM-DD/"
+
+import org.apache.spark.sql.types._
+
+val preds_schema = StructType(List(
+    StructField("user_id", LongType, true), 
+    StructField("predicted_class", StringType, true),
+    StructField("prediction_probability", DoubleType, false)
+))
+
+val raw_predictions = 
+sqlContext.read
+    .format("com.databricks.spark.csv")
+    .option("header", "false") 
+    .option("delimiter", "\t") 
+    .schema(preds_schema)
+    .load(predictions_loc)
+	
+val count_users = raw_predictions.select($"user_id").distinct.count()
+val users_class_X = raw_predictions.filter($"predicted_class" === lit("X")).select($"user_id").distinct
+val users_class_X = raw_predictions.filter($"predicted_class" === lit("X")).filter($"prediction_probability" > 0.7).select($"user_id").distinct
+
+// Snippet 5
+import ...
+
+sqlContext.sql("set spark.sql.shuffle.partitions=100");
+
+val udfs = new BigMLFlowUDFs( sqlContext )
+val dataPath = "s3://.../users/date=YYYY-MM-DD/"
+val rawData = sc.textFile(dataPath)
+val usersRDD = inputsHandler.parseUserFile( rawData )
+val userDF = usersRDD.toDF()
+
+// How many users are wizards?
+val filteredUsers = users.filter($"job" === "Wizard")
+
+val count_users = userDF.select($"user_id").distinct.count()
+val count_wizards = filteredUsers.select($"user_id").distinct.count()
