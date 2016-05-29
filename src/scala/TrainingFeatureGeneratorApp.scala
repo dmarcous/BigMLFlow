@@ -1,4 +1,4 @@
-object FeatureGeneratorApp
+object TrainingFeatureGeneratorApp
 {
 
   def main(args: Array[String]): Unit = {
