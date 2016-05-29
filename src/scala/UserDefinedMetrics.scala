@@ -1,4 +1,4 @@
-object userDefinedMetrics
+object UserDefinedMetrics
 {
   def evaluateModel( labelAndPreds: RDD[(Double, Double)]) : String =  
     {         
